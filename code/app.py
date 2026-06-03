@@ -21,6 +21,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from filters import load_foods, apply_all_filters, PERSONAS, CLINICAL_FILTERS
 from meal_planner import generate_plan, MEAL_NAMES
+from ranking import generate_plan_with_faiss
 from nutrients import get_rda, analyze_gaps, NUTRIENT_DISPLAY, compute_daily_totals
 
 
@@ -211,8 +212,9 @@ if len(safe_foods) < 21:
 
 # Step 2: Generate
 with st.spinner("Generating your personalized 7-day meal plan..."):
-    plan = generate_plan(
+    plan = generate_plan_with_faiss(
         safe_foods,
+        exclusions,
         age=age,
         sex=sex,
         calorie_target=calorie_target,
@@ -232,6 +234,29 @@ m2.metric("Safe Foods", f"{len(safe_foods):,}")
 m3.metric("Foods Excluded", f"{len(exclusions):,}")
 m4.metric("Unique Meals", f"{plan['unique_foods']}/{plan['total_meals']}")
 m5.metric("Avg Calories/Day", f"{plan['weekly_summary']['daily_averages']['calories']:.0f}")
+
+# Optimization Engine Benchmarks
+if "benchmarks" in plan:
+    bm = plan["benchmarks"]
+    st.markdown("---")
+    st.markdown("### ⚡ Optimization Engine")
+    
+    t1, t2 = st.columns(2)
+    with t1:
+        st.markdown("**Smart Retrieval — FAISS**")
+        st.caption("Vector similarity search over nutrient profiles")
+        f1, f2, f3 = st.columns(3)
+        f1.metric("Index Build", f"{bm['faiss_build_time_ms']:.1f}ms")
+        f2.metric("Avg Query", f"{bm['faiss_avg_query_ms']:.2f}ms")
+        f3.metric("Foods Indexed", f"{bm['faiss_index_size']:,}")
+    
+    with t2:
+        st.markdown("**Safety Filter — Bloom Filter**")
+        st.caption("Probabilistic exclusion screening")
+        b1, b2, b3 = st.columns(3)
+        b1.metric("Rules Loaded", f"{bm['bloom_n_excluded']:,}")
+        b2.metric("Avg Check", f"{bm['bloom_avg_check_ms']:.2f}ms")
+        b3.metric("False Positive Rate", f"{bm['bloom_false_positive_rate']:.2f}%")
 
 
 # ---------------------------------------------------------------------------
@@ -416,6 +441,6 @@ with export_c2:
 # ---------------------------------------------------------------------------
 st.markdown("---")
 st.caption(
-    "NutriAI — BAX-423 Big Data · Spring 2026 · UC Davis GSM · "
+    "NutriAI — Personalized Nutrition Planning · "
     f"Database: {len(df):,} foods | Generation time: {gen_time}s"
 )
