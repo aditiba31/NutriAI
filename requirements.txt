@@ -1,0 +1,23 @@
+# NutriAI — Dependencies
+# Install: pip install -r requirements.txt
+
+# Core
+streamlit>=1.36.0
+pandas>=2.2.0
+numpy>=1.26.0
+
+# Database
+# (sqlite3 is built into Python — no install needed)
+
+# BAX-423 Techniques
+faiss-cpu>=1.7.4          # Technique 1: FAISS embeddings for candidate retrieval
+pybloom-live>=4.0.0       # Technique 2: Bloom filter for fast allergen exclusion
+
+# Nutrient analysis & export
+fpdf2>=2.7.0              # PDF export of meal plans
+scikit-learn>=1.4.0       # Normalization, preprocessing for embeddings
+
+# Utilities
+python-dotenv>=1.0.0      # Load .env secrets
+requests>=2.31.0          # USDA API calls
+tqdm>=4.66.0              # Progress bars during data ingestion
