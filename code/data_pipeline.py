@@ -87,18 +87,16 @@ def fetch_usda_foods(api_key: str, data_types: list = None, page_size: int = 200
         page = 1
         
         while page <= max_pages:
-            params = {
-                "api_key": api_key,
-                "dataType": [dtype],
-                "pageSize": page_size,
-                "pageNumber": page,
-                "nutrients": list(NUTRIENT_MAP.keys()),
-            }
-            
             try:
-                resp = requests.post(
+                resp = requests.get(
                     f"{USDA_BASE_URL}/foods/search",
-                    json=params,
+                    params={
+                        "api_key": api_key,
+                        "query": "*",
+                        "dataType": dtype,
+                        "pageSize": page_size,
+                        "pageNumber": page,
+                    },
                     timeout=30,
                 )
                 resp.raise_for_status()
