@@ -120,8 +120,11 @@ if len(safe_foods) < 21:
     st.stop()
 
 with st.spinner("Generating your personalized 7-day meal plan..."):
-    plan = generate_plan_with_faiss(safe_foods, exclusions, age=age, sex=sex,
-                                     calorie_target=calorie_target)
+    plan = generate_plan_with_faiss(
+        safe_foods, exclusions,
+        age=age, sex=sex, calorie_target=calorie_target,
+        conditions=conditions, allergens=allergens, diet=diet, no_pork=no_pork
+    )
 
 gen_time = plan["generation_time_s"]
 
