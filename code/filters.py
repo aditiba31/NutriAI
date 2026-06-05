@@ -67,10 +67,10 @@ def filter_gerd(df):
 
 def filter_t2_diabetes(df):
     desc = df["description"].str.lower()
-    mask = _matches_keywords_series(desc, GI_HIGH_KEYWORDS)
+    mask = _matches_keywords_series(desc, GI_HIGH_KEYWORDS) | _matches_keywords_series(desc, GI_MEDIUM_KEYWORDS)
     if "gi_estimate" in df.columns:
-        mask = mask | (df["gi_estimate"] == "high")
-    excl = [(r["description"], "High glycaemic index (GI ≥ 70) — rapid blood sugar spikes (GI Foundation)") for _, r in df[mask].iterrows()]
+        mask = mask | (df["gi_estimate"].isin(["high", "medium"]))
+    excl = [(r["description"], "Glycaemic index > 55 — not safe for T2 Diabetes (GI Foundation, target GI ≤ 55)") for _, r in df[mask].iterrows()]
     return df[~mask].reset_index(drop=True), excl
 
 def filter_hypertension(df):

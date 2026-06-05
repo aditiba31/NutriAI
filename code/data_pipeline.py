@@ -978,6 +978,70 @@ def main():
             df_curated = build_curated_dataset()
             df = pd.concat([df, df_curated], ignore_index=True)
 
+    # Step 1b: Remove inappropriate foods from USDA data
+    print(f"\n🧹 Filtering out inappropriate foods...")
+    before_filter = len(df)
+    
+    # Keywords that indicate non-meal items
+    exclude_patterns = [
+        "infant formula", "baby food", "baby cereal",
+        "toddler", "gerber", "similac", "enfamil",
+        "dog food", "cat food", "pet food",
+        "burger king", "mcdonald", "wendy", "taco bell",
+        "pizza hut", "kfc", "subway", "chick-fil-a",
+        "popeye", "arby", "domino", "papa john",
+        "jack in the box", "sonic drive", "dairy queen",
+        "denny", "applebee", "olive garden", "red lobster",
+        "chipotle", "panera", "five guys", "shake shack",
+        "cracker barrel", "outback", "chili's", "ihop",
+        "waffle house", "bob evans", "golden corral",
+        "supplement", "protein powder", "protein bar",
+        "meal replacement", "ensure", "boost",
+        "ready-to-drink", "nutritional drink",
+        "lard", "shortening", "margarine",
+        "candy", "candies", "confection", "m&m", "snickers", "reese", "skittles",
+        "frosting", "icing", "cookie dough", "fudge", "caramel",
+        "chocolate chip", "chocolate bar", "milk chocolate",
+        "cookie", "cookies", "biscuit", "wafer", "brownie",
+        "pie,", "pie crust", "pastry", "doughnut", "donut",
+        "cake,", "muffin", "scone", "croissant",
+        "granola bar", "snack bar", "energy bar",
+        "kashi", "clif bar", "nature valley",
+        "mature seeds, raw",
+        "raw, frozen, salted", "raw, frozen, pasteurized",
+        "papad",
+        "instant, with chicory", "coffee, instant",
+        "french fried", "par fried",
+        "soda", "coca-cola", "pepsi", "mountain dew", "sprite",
+        "energy drink", "red bull", "monster energy",
+        "alcoholic", "beer", "wine", "liquor", "cocktail",
+        "nestle", "kraft", "kellogg", "general mills",
+        "quaker", "nabisco", "pillsbury", "betty crocker",
+        "campbell", "hormel", "oscar mayer", "tyson",
+        "udi's", "bob's red mill", "annie's",
+        "cereals ready-to-eat", "cereals, ready-to-eat",
+        "frozen dinner", "tv dinner", "hot pocket",
+        "lean cuisine", "stouffer", "marie callender",
+        "post,", "post ", 
+        "drink mix", "beverage mix", "powder mix",
+        "flavoring", "seasoning mix", "gravy mix",
+        "baking chocolate", "cocoa mix",
+        "egg, yolk, raw", "egg, white, raw, frozen",
+        "gelatin", "pectin", "cornstarch",
+        "taco shell", "taco kit",
+        "crouton",
+    ]
+    
+    desc_lower = df["description"].str.lower()
+    exclude_mask = pd.Series([False] * len(df), index=df.index)
+    for pattern in exclude_patterns:
+        exclude_mask = exclude_mask | desc_lower.str.contains(pattern, na=False)
+    
+    df = df[~exclude_mask].reset_index(drop=True)
+    removed = before_filter - len(df)
+    print(f"   Removed {removed} inappropriate items (baby food, fast food, supplements, etc.)")
+    print(f"   Remaining: {len(df)} foods")
+
     # Step 2: Tag foods
     df = tag_foods(df)
 

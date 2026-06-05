@@ -312,7 +312,7 @@ for category, foods in GERD_TRIGGER_FOODS.items():
 
 ALLERGEN_KEYWORDS = {
     "dairy": [
-        "milk", "cheese", "yogurt", "cream", "butter", "whey",
+        "dairy", "milk", "cheese", "yogurt", "cream", "butter", "whey",
         "casein", "lactose", "ghee", "ice cream", "custard",
         "pudding", "ricotta", "mozzarella", "parmesan", "cheddar",
         "brie", "camembert", "gouda", "swiss", "feta",

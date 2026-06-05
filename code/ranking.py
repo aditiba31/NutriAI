@@ -31,21 +31,90 @@ EMBEDDING_COLS = [
 ]
 
 # Typical serving sizes by food category (grams)
+# Keys cover both our curated categories AND USDA category names
 SERVING_SIZES = {
-    "Grains": 250,
-    "Vegetables": 150,
-    "Fruits": 175,
-    "Legumes": 200,
-    "Nuts and Seeds": 40,
-    "Dairy": 200,
-    "Eggs": 120,
-    "Poultry": 170,
-    "Red Meat": 170,
-    "Fish and Seafood": 170,
-    "Oils and Fats": 15,
-    "Beverages": 250,
-    "Condiments": 30,
-    "Prepared Foods": 350,
+    "grains": 250,
+    "cereal": 250,
+    "baked": 200,
+    "vegetables": 150,
+    "vegetable": 150,
+    "fruits": 175,
+    "fruit": 175,
+    "legume": 200,
+    "bean": 200,
+    "nut": 40,
+    "seed": 40,
+    "dairy": 200,
+    "milk": 200,
+    "cheese": 40,
+    "egg": 120,
+    "poultry": 170,
+    "chicken": 170,
+    "turkey": 170,
+    "beef": 170,
+    "pork": 170,
+    "lamb": 170,
+    "meat": 170,
+    "fish": 170,
+    "seafood": 170,
+    "finfish": 170,
+    "shellfish": 150,
+    "oil": 15,
+    "fat": 15,
+    "beverage": 250,
+    "drink": 250,
+    "condiment": 30,
+    "sauce": 30,
+    "spice": 5,
+    "herb": 5,
+    "soup": 300,
+    "baby": 0,  # Will be filtered out
+    "snack": 40,
+    "sweet": 30,
+    "candy": 0,
+    "prepared": 350,
+}
+
+# USDA ingredient entries that aren't standalone foods
+USDA_INGREDIENT_KEYWORDS = [
+    "raw, frozen", "pasteurized", "dehydrated",
+    "concentrate", "isolate", "extract",
+    "powder, dry", "dry, powder",
+    "industrial", "food service",
+    "imitation", "analog",
+    "formula,", "formulated",
+]
+
+# Foods that need specific serving size overrides regardless of category
+FOOD_NAME_SERVING_OVERRIDES = {
+    "peanut butter": 32,
+    "almond butter": 32,
+    "tahini": 30,
+    "sesame butter": 30,
+    "nutella": 30,
+    "peanuts": 40,
+    "peanut": 40,
+    "cheese": 40,
+    "gjetost": 40,
+    "tostada": 60,
+    "coffee": 10,
+    "instant coffee": 5,
+    "cocoa powder": 10,
+    "french fried": 100,
+    "french fries": 100,
+    "jam": 30,
+    "jelly": 30,
+    "honey": 20,
+    "syrup": 30,
+    "popcorn": 30,
+    "trail mix": 40,
+    "chips": 30,
+    "cracker": 30,
+    "pretzels": 30,
+    "dried fruit": 40,
+    "jerky": 30,
+    "granola": 50,
+    "muesli": 60,
 }
 
 DAYS = 7
@@ -56,10 +125,51 @@ MAX_CATEGORY_PER_DAY = 2
 FAISS_TOP_K = 80
 
 
-def get_serving_multiplier(food_category):
-    """Get the serving size multiplier (serving_g / 100g)."""
-    serving_g = SERVING_SIZES.get(food_category, 200)
-    return serving_g / 100.0
+def get_serving_multiplier(food_category, food_desc=""):
+    """Get the serving size multiplier (serving_g / 100g).
+    Checks food name overrides first, then category matching."""
+    desc_lower = food_desc.lower() if food_desc else ""
+    
+    # Check food name overrides first (most specific)
+    for food_name, serving_g in FOOD_NAME_SERVING_OVERRIDES.items():
+        if food_name in desc_lower:
+            return serving_g / 100.0
+    
+    # Then check category
+    cat_lower = food_category.lower() if food_category else ""
+    for key, serving_g in SERVING_SIZES.items():
+        if key in cat_lower:
+            if serving_g == 0:
+                return 0
+            return serving_g / 100.0
+    return 200 / 100.0  # Default: 200g serving
+
+
+def is_usda_ingredient(food_desc):
+    """Check if a USDA entry is an ingredient, not a standalone food."""
+    desc_lower = food_desc.lower()
+    return any(kw in desc_lower for kw in USDA_INGREDIENT_KEYWORDS)
+
+
+def get_base_food_name(description):
+    """Extract base food name for diversity tracking.
+    'Broccoli, steamed' and 'Broccoli, raw' → 'broccoli'"""
+    desc = description.lower().strip()
+    # Take first part before comma
+    base = desc.split(",")[0].strip()
+    # Remove common prefixes
+    for prefix in ["organic ", "store brand ", "premium ", "farm-fresh ",
+                   "all-natural ", "locally sourced ", "imported ",
+                   "mediterranean-style ", "asian-inspired ", "mexican-style ",
+                   "indian-spiced ", "thai-style ", "japanese-style ",
+                   "middle eastern ", "italian-style ", "korean-style ",
+                   "ethiopian-style ", "caribbean-style ", "cajun-style ",
+                   "grilled ", "baked ", "steamed ", "roasted ", "sauteed ",
+                   "braised ", "poached ", "broiled ", "pan-seared ",
+                   "stir-fried ", "low-sodium ", "reduced-fat ", "fortified "]:
+        if base.startswith(prefix):
+            base = base[len(prefix):]
+    return base.strip()
 
 
 def get_meal_type_score(food_desc, food_cat, meal_name):
@@ -164,6 +274,7 @@ def generate_plan_with_faiss(safe_foods, exclusions, age=30, sex="female",
 
     plan_days = []
     used_globally = set()
+    base_name_counts = {}  # Track base food names for diversity
     all_categories_used = []
 
     for day_num in range(1, DAYS + 1):
@@ -204,12 +315,28 @@ def generate_plan_with_faiss(safe_foods, exclusions, age=30, sex="female",
                 if categories_today.count(cat) >= MAX_CATEGORY_PER_DAY:
                     continue
 
-                # Apply serving size
-                multiplier = get_serving_multiplier(cat)
+                # Skip USDA ingredient entries (not standalone foods)
+                if is_usda_ingredient(desc):
+                    continue
+
+                # Apply serving size (handles USDA category names)
+                multiplier = get_serving_multiplier(cat, desc)
+                if multiplier == 0:
+                    continue  # Baby food etc.
                 food_cal = float(food.get("calories", 0) or 0) * multiplier
 
                 # Must be in a reasonable calorie range for this meal
-                if food_cal < meal_cal_target * 0.2 or food_cal > meal_cal_target * 2.0:
+                # Lunch and dinner need more substantial meals than breakfast
+                if meal_name == "Breakfast":
+                    cal_floor = meal_cal_target * 0.25
+                else:
+                    cal_floor = meal_cal_target * 0.4
+                if food_cal < cal_floor or food_cal > meal_cal_target * 1.3:
+                    continue
+
+                # Base-name diversity: limit any base food to max 3 per week
+                base_name = get_base_food_name(desc)
+                if base_name_counts.get(base_name, 0) >= 3:
                     continue
 
                 # Nutrient gap score
@@ -224,21 +351,22 @@ def generate_plan_with_faiss(safe_foods, exclusions, age=30, sex="female",
                 meal_fit = get_meal_type_score(desc, cat, meal_name)
                 gap_score *= (0.5 + 0.5 * meal_fit)
 
-                # Weekly diversity bonus
+                # Weekly diversity bonus — stronger for unused foods
                 if desc not in used_globally:
+                    gap_score *= 1.3
+                if base_name_counts.get(base_name, 0) == 0:
                     gap_score *= 1.2
 
-                # Calorie fit bonus
+                # Calorie fit — strongly penalize foods far from target
                 cal_fit = 1.0 - abs(food_cal - meal_cal_target) / (meal_cal_target + 1)
-                gap_score *= (0.6 + 0.4 * max(cal_fit, 0))
+                gap_score *= (0.3 + 0.7 * max(cal_fit, 0))
 
-                # Penalize condiments/oils as main dishes
-                if cat in ("Condiments", "Oils and Fats"):
-                    gap_score *= 0.1
-
-                # Penalize nuts/seeds as main dishes (they're snacks)
-                if cat == "Nuts and Seeds" and meal_name != "Snack":
-                    gap_score *= 0.4
+                # Penalize condiments/oils/seeds as main dishes
+                cat_lower = cat.lower()
+                if any(k in cat_lower for k in ["condiment", "sauce", "spice", "oil", "fat"]):
+                    gap_score *= 0.05
+                if any(k in cat_lower for k in ["nut", "seed"]) and meal_name != "Snack":
+                    gap_score *= 0.3
 
                 scored_candidates.append((gap_score, food, multiplier))
 
@@ -258,11 +386,21 @@ def generate_plan_with_faiss(safe_foods, exclusions, age=30, sex="female",
                 chosen = scale_food_nutrients(chosen_raw, chosen_mult)
                 chosen["serving_g"] = round(chosen_mult * 100)
             else:
-                # Fallback
-                fallback_idx = np.random.randint(0, len(safe_foods))
-                chosen_raw = safe_foods.iloc[fallback_idx].to_dict()
+                # Fallback: pick a random food that meets calorie minimum
+                min_cal = meal_cal_target * 0.3
+                eligible = [
+                    safe_foods.iloc[i].to_dict()
+                    for i in np.random.choice(len(safe_foods), min(100, len(safe_foods)), replace=False)
+                    if float(safe_foods.iloc[i].get("calories", 0) or 0) * get_serving_multiplier(
+                        safe_foods.iloc[i].get("food_category", ""), safe_foods.iloc[i].get("description", "")
+                    ) >= min_cal
+                ]
+                if eligible:
+                    chosen_raw = eligible[np.random.randint(0, len(eligible))]
+                else:
+                    chosen_raw = safe_foods.iloc[np.random.randint(0, len(safe_foods))].to_dict()
                 cat = chosen_raw.get("food_category", "Prepared Foods")
-                chosen_mult = get_serving_multiplier(cat)
+                chosen_mult = get_serving_multiplier(cat, chosen_raw.get("description", ""))
                 chosen = scale_food_nutrients(chosen_raw, chosen_mult)
                 chosen["serving_g"] = round(chosen_mult * 100)
                 chosen_score = 0.0
@@ -279,6 +417,10 @@ def generate_plan_with_faiss(safe_foods, exclusions, age=30, sex="female",
             used_globally.add(desc)
             categories_today.append(cat)
             all_categories_used.append(cat)
+            
+            # Track base food name for weekly diversity
+            base = get_base_food_name(desc)
+            base_name_counts[base] = base_name_counts.get(base, 0) + 1
 
             for nutrient in ["calories"] + TRACKED_NUTRIENTS:
                 food_val = float(chosen.get(nutrient, 0) or 0)
