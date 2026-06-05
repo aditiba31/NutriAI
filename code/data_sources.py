@@ -497,6 +497,7 @@ MEAT_KEYWORDS = [
     "ribs", "drumstick", "thigh", "breast", "wing",
     "liver", "kidney", "heart", "tongue",
     "hot dog", "deli meat", "lunch meat", "pepperoni",
+    "corn dog",
 ]
 
 PORK_KEYWORDS = [

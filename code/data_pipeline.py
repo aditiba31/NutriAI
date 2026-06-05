@@ -139,7 +139,30 @@ def fetch_usda_foods(api_key: str, data_types: list = None, page_size: int = 200
         if col not in df.columns:
             df[col] = 0.0
     
-    print(f"\n✅ Fetched {len(df)} foods from USDA API")
+    # USDA Category Whitelist — only keep food groups appropriate for meal plans
+    # Excludes: Snacks, Fast Foods, Sweets, Beverages, Baby Foods, Restaurant Foods,
+    #           Sausages and Luncheon Meats, Meals/Entrees (frozen dinners)
+    USDA_EXCLUDED_CATEGORIES = [
+        "snack", "fast food", "sweet", "beverage", "baby food",
+        "restaurant", "sausage", "luncheon meat",
+        "meals, entrees", "side dish",
+        "american indian", "alaska native",
+        "breakfast cereal",
+    ]
+    
+    if len(df) > 0 and "food_category" in df.columns:
+        before = len(df)
+        cat_lower = df["food_category"].str.lower()
+        bad_cat_mask = pd.Series([False] * len(df), index=df.index)
+        for cat_pattern in USDA_EXCLUDED_CATEGORIES:
+            bad_cat_mask = bad_cat_mask | cat_lower.str.contains(cat_pattern, na=False)
+        df = df[~bad_cat_mask].reset_index(drop=True)
+        removed = before - len(df)
+        if removed > 0:
+            print(f"   🏷️  Removed {removed} foods from excluded USDA categories "
+                  f"(snacks, fast food, sweets, beverages, etc.)")
+    
+    print(f"\n✅ Fetched {len(df)} usable foods from USDA API")
     return df
 
 
@@ -995,6 +1018,8 @@ def main():
         "chipotle", "panera", "five guys", "shake shack",
         "cracker barrel", "outback", "chili's", "ihop",
         "waffle house", "bob evans", "golden corral",
+        "t.g.i. friday", "friday's", "french fries",
+        "pizza,", "pizza ", "calzone", "stromboli",
         "supplement", "protein powder", "protein bar",
         "meal replacement", "ensure", "boost",
         "ready-to-drink", "nutritional drink",
@@ -1019,6 +1044,8 @@ def main():
         "quaker", "nabisco", "pillsbury", "betty crocker",
         "campbell", "hormel", "oscar mayer", "tyson",
         "udi's", "bob's red mill", "annie's",
+        "ovaltine", "balance,", "slim fast",
+        "corn dog", "hot dog",
         "cereals ready-to-eat", "cereals, ready-to-eat",
         "frozen dinner", "tv dinner", "hot pocket",
         "lean cuisine", "stouffer", "marie callender",
