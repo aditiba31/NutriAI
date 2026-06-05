@@ -241,14 +241,27 @@ def validate_pass_criteria(plan, persona_name, rda):
                 "firm tofu",
                 "lactose-free",
                 "gluten-free",
+                "buckwheat",
             ]
+            FALSE_POSITIVE_FODMAP = {
+                "wheat": ["buckwheat"],
+                "cream": ["creamy", "cream of rice"],
+                "pea": ["peanut", "pear"],
+            }
 
             violations = []
             for d in descs:
-                # Do not falsely flag explicitly safe phrasing used by NutriAI templates.
                 if any(safe in d for safe in SAFE_IBS_TERMS):
                     continue
-                if any(k in d for k in ALL_HIGH_FODMAP_KEYWORDS):
+                flagged = False
+                for k in ALL_HIGH_FODMAP_KEYWORDS:
+                    if k in d:
+                        if k in FALSE_POSITIVE_FODMAP:
+                            if any(fp in d for fp in FALSE_POSITIVE_FODMAP[k]):
+                                continue
+                        flagged = True
+                        break
+                if flagged:
                     violations.append(d)
 
             passed = len(violations) == 0
@@ -263,14 +276,31 @@ def validate_pass_criteria(plan, persona_name, rda):
                 "cultured cup alternative",
                 "cultured cup",
                 "non-dairy",
+                "peanut butter",
+                "nut butter",
+                "seed butter",
+                "sunflower seed butter",
+                "almond butter",
             ]
+            FALSE_POSITIVE_DAIRY = {
+                "butter": ["peanut butter", "nut butter", "seed butter", "almond butter",
+                           "sunflower butter", "cashew butter"],
+                "cream": ["creamy", "cream of rice"],
+            }
 
             violations = []
             for d in descs:
-                # Avoid false failures for lactose-free or plant-based alternatives.
                 if any(safe in d for safe in SAFE_DAIRY_TERMS):
                     continue
-                if any(k in d for k in ALLERGEN_KEYWORDS["dairy"]):
+                flagged = False
+                for k in ALLERGEN_KEYWORDS["dairy"]:
+                    if k in d:
+                        if k in FALSE_POSITIVE_DAIRY:
+                            if any(fp in d for fp in FALSE_POSITIVE_DAIRY[k]):
+                                continue
+                        flagged = True
+                        break
+                if flagged:
                     violations.append(d)
 
             passed = len(violations) == 0
@@ -291,15 +321,19 @@ def validate_pass_criteria(plan, persona_name, rda):
                 "gluten-free", "buckwheat", "rice", "quinoa", "millet", "potato",
                 "rice cake", "rice porridge", "rice plate"
             ]
+            FALSE_POSITIVE_GLUTEN = {
+                "wheat": ["buckwheat"],
+            }
             violations = []
             for d in descs:
                 if "gluten-free" in d:
                     continue
-                # Avoid false positives where safe gluten-free substitutes contain
-                # words such as rice/noodle only because of the meal format.
                 unsafe = False
                 for k in ALLERGEN_KEYWORDS["gluten"]:
                     if k in d:
+                        if k in FALSE_POSITIVE_GLUTEN:
+                            if any(fp in d for fp in FALSE_POSITIVE_GLUTEN[k]):
+                                continue
                         if any(safe in d for safe in SAFE_GLUTEN_TERMS) and k in ["pancake", "noodle", "bread", "cereal"]:
                             continue
                         unsafe = True
@@ -352,18 +386,40 @@ def validate_pass_criteria(plan, persona_name, rda):
                 "plant drink", "plant milk", "pea drink", "oat drink", "soy drink",
                 "non-dairy", "dairy-free", "yogurt alternative",
                 "cultured cup", "tofu", "tempeh", "lentil", "chickpea",
-                "tahini", "flaxseed", "sunflower seed", "chia"
+                "tahini", "flaxseed", "sunflower seed", "chia",
+                "kidney bean", "lima bean",
             ]
+            # Words that contain animal keywords as substrings but are plant-based
+            FALSE_POSITIVE_ANIMAL = {
+                "kidney": ["kidney bean"],
+                "liver": ["deliver"],
+                "cream": ["creamy", "cream of rice"],
+                "butter": ["peanut butter", "nut butter", "seed butter",
+                           "almond butter", "sunflower butter", "cocoa butter"],
+            }
             violations = []
             animal_keywords = MEAT_KEYWORDS + FISH_SEAFOOD_KEYWORDS + EGG_KEYWORDS + ALLERGEN_KEYWORDS["dairy"]
             for d in descs:
                 if any(safe in d for safe in SAFE_VEGAN_TERMS):
-                    # Ignore dairy words only when explicitly describing alternatives.
                     animal_hits = [k for k in animal_keywords if k in d]
+                    # Filter out dairy words that refer to alternatives
                     animal_hits = [k for k in animal_hits if k not in ["milk", "yogurt", "dairy", "lactose"]]
-                    if not animal_hits:
+                    # Filter out false-positive substrings
+                    real_hits = []
+                    for k in animal_hits:
+                        if k in FALSE_POSITIVE_ANIMAL and any(fp in d for fp in FALSE_POSITIVE_ANIMAL[k]):
+                            continue
+                        real_hits.append(k)
+                    if not real_hits:
                         continue
-                if any(k in d for k in animal_keywords):
+                flagged = False
+                for k in animal_keywords:
+                    if k in d:
+                        if k in FALSE_POSITIVE_ANIMAL and any(fp in d for fp in FALSE_POSITIVE_ANIMAL[k]):
+                            continue
+                        flagged = True
+                        break
+                if flagged:
                     violations.append(d)
             passed, detail = len(violations)==0, f"{len(violations)} violations" if violations else "Clean"
         elif cid == "zero_tree_nuts":
@@ -395,7 +451,7 @@ PERSONAS = {
     "Priya": {"description":"28F, IBS + Vegetarian + Lactose Intolerant","age":28,"sex":"female",
               "conditions":["ibs"],"allergens":["dairy"],"diet":"vegetarian","calorie_target":1800,"no_pork":False},
     "Ravi": {"description":"45M, GERD + Non-Veg + Gluten-Free, No Pork","age":45,"sex":"male",
-             "conditions":["gerd"],"allergens":["gluten"],"diet":"non-veg","calorie_target":2200,"no_pork":True},
+             "conditions":["gerd"],"allergens":["gluten"],"diet":"none","calorie_target":2200,"no_pork":True},
     "Mei": {"description":"35F, Type 2 Diabetes + Vegan + No Tree Nuts","age":35,"sex":"female",
             "conditions":["t2_diabetes"],"allergens":["tree_nuts"],"diet":"vegan","calorie_target":1600,"no_pork":False},
     "James": {"description":"55M, Hypertension + Pescatarian + No Soy","age":55,"sex":"male",
