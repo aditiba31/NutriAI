@@ -6,6 +6,8 @@
 ![FAISS](https://img.shields.io/badge/FAISS-Vector_Search-blue)
 ![Streamlit](https://img.shields.io/badge/Streamlit-App-FF4B4B?logo=streamlit&logoColor=white)
 
+🔗 **Live App:** [https://nutriai-dietplan.streamlit.app](https://nutriai-dietplan.streamlit.app)
+
 ---
 
 ## The Problem
@@ -36,7 +38,7 @@ Every excluded food comes with a source-cited explanation (e.g., *"Garlic exclud
 
 ```bash
 # 1. Clone the repository
-git clone <repo-url>
+git clone https://github.com/aditibelur/NutriAI.git
 cd NutriAI
 
 # 2. Install dependencies
@@ -121,12 +123,9 @@ NutriAI/
 │   ├── data_sources.py     # Clinical reference data (FODMAP, GI, DASH, GERD)
 │   ├── filters.py          # Condition & allergen filter chain
 │   ├── nutrients.py        # RDA tables + gap analysis
-│   ├── meal_planner.py     # Greedy nutrient-gap planner (baseline)
 │   └── ranking.py          # FAISS + Bloom ranking engine
 ├── data/
 │   └── nutriai_foods.db    # Pre-built food database (15,636 records)
-├── brief.pdf               # Technical brief
-├── prompts.md              # AI prompts used
 ├── requirements.txt
 └── README.md
 ```
