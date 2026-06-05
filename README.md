@@ -2,12 +2,9 @@
 
 **AI-powered dietary planning that generates personalized 7-day meal plans in under 60 seconds — tailored to clinical conditions, allergens, and nutritional targets.**
 
-[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](<YOUR_STREAMLIT_URL_HERE>)
 ![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white)
 ![FAISS](https://img.shields.io/badge/FAISS-Vector_Search-blue)
-![License](https://img.shields.io/badge/License-Academic-green)
-
-<YOUR_STREAMLIT_URL_HERE>
+![Streamlit](https://img.shields.io/badge/Streamlit-App-FF4B4B?logo=streamlit&logoColor=white)
 
 ---
 
@@ -26,6 +23,50 @@ NutriAI takes a user's clinical profile — conditions, allergens, dietary prefe
 - **Fast** — end-to-end generation in 1–4 seconds
 
 Every excluded food comes with a source-cited explanation (e.g., *"Garlic excluded — High-FODMAP, Monash University"*).
+
+---
+
+## How to Run
+
+### Prerequisites
+- Python 3.10 or higher
+- pip
+
+### Setup & Run
+
+```bash
+# 1. Clone the repository
+git clone <repo-url>
+cd NutriAI
+
+# 2. Install dependencies
+pip install -r requirements.txt
+
+# 3. Run the application
+cd code
+streamlit run app.py
+```
+
+The app opens at **http://localhost:8501**.
+
+### Using the App
+1. Select a **test persona** from the sidebar dropdown (Priya, Ravi, Mei, or James) — or configure a custom profile
+2. Set your **age, sex, conditions, allergens, diet type**, and **calorie target**
+3. Click **Generate 7-Day Plan**
+4. View the plan by day, review nutrient analysis, check pass criteria, and export as CSV or PDF
+
+> The database ships pre-built with 15,636 foods. No API key needed to run.
+
+### Rebuilding the Database (optional)
+
+```bash
+# With USDA API key
+echo "USDA_API_KEY=your_key_here" > .env
+python code/data_pipeline.py
+
+# Without API key (curated fallback)
+python code/data_pipeline.py --fallback
+```
 
 ---
 
@@ -56,31 +97,6 @@ User Profile → Clinical Filter Chain → Allergen Exclusion → Safe Food Pool
 
 ---
 
-## Quick Start
-
-```bash
-pip install -r requirements.txt
-cd code
-streamlit run app.py
-```
-
-The app opens at `http://localhost:8501`. Select a test persona or configure a custom profile, then hit **Generate 7-Day Plan**.
-
-> The database ships pre-built (15,636 foods). No API key needed to run.
-
-### Rebuilding the Database (optional)
-
-```bash
-# With USDA API key
-echo "USDA_API_KEY=your_key_here" > .env
-python code/data_pipeline.py
-
-# Without API key (curated fallback)
-python code/data_pipeline.py --fallback
-```
-
----
-
 ## Tech Stack
 
 | Component | Technology |
@@ -100,7 +116,7 @@ python code/data_pipeline.py --fallback
 ```
 NutriAI/
 ├── code/
-│   ├── app.py              # Streamlit UI
+│   ├── app.py              # Streamlit UI (entry point)
 │   ├── data_pipeline.py    # USDA ingestion + curated dataset
 │   ├── data_sources.py     # Clinical reference data (FODMAP, GI, DASH, GERD)
 │   ├── filters.py          # Condition & allergen filter chain
@@ -143,7 +159,3 @@ All 4 personas pass all 6 core capabilities and all persona-specific criteria.
 | Database size | 15,636 foods |
 | Conditions supported | 9 |
 | Allergen types | 7 |
-
----
-
-*Built as part of BAX-423 Big Data · UC Davis GSM · Spring 2026*
