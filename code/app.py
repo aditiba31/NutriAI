@@ -131,13 +131,14 @@ gen_time = plan["generation_time_s"]
 # ── SUMMARY METRICS ──
 st.markdown("---")
 st.markdown("### 📊 Plan Summary")
-m1, m2, m3, m4, m5 = st.columns(5)
+m1, m2, m3, m4, m5, m6 = st.columns(6)
 m1.metric("Generation Time", f"{gen_time}s",
           delta="Under 60s ✅" if gen_time < 60 else "Over 60s ❌")
 m2.metric("Safe Foods", f"{len(safe_foods):,}")
 m3.metric("Foods Excluded", f"{len(exclusions):,}")
 m4.metric("Unique Meals", f"{plan['unique_foods']}/{plan['total_meals']}")
-m5.metric("Avg Calories/Day", f"{plan['weekly_summary']['daily_averages']['calories']:.0f}")
+m5.metric("Diversity Score", f"{plan['diversity_score']:.0%}")
+m6.metric("Avg Calories/Day", f"{plan['weekly_summary']['daily_averages']['calories']:.0f}")
 
 # ── OPTIMIZATION ENGINE ──
 if "benchmarks" in plan:

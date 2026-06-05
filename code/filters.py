@@ -146,6 +146,13 @@ def filter_allergens(df, allergens):
     col_map = {"dairy":"contains_dairy","lactose":"contains_dairy","gluten":"contains_gluten",
                "soy":"contains_soy","tree_nuts":"contains_tree_nuts","nuts":"contains_tree_nuts",
                "eggs":"contains_eggs","shellfish":None,"peanuts":None}
+    # Foods with known cross-contamination risk per allergen
+    CROSS_CONTAMINATION = {
+        "gluten": ["oat", "oats", "oatmeal", "soba", "buckwheat"],
+        "tree_nuts": ["chocolate", "granola", "muesli", "trail mix", "pesto"],
+        "peanuts": ["chocolate", "granola", "trail mix", "candy", "bakery"],
+        "dairy": ["chocolate", "bakery", "bread"],
+    }
     all_excl = []
     combined_mask = pd.Series([False]*len(df), index=df.index)
     desc_lower = df["description"].str.lower()
@@ -158,6 +165,14 @@ def filter_allergens(df, allergens):
             mask = mask | _matches_keywords_series(desc_lower, kws)
         for _, r in df[mask & ~combined_mask].iterrows():
             all_excl.append((r["description"], f"Contains {al} — allergen exclusion"))
+        # Flag cross-contamination risks
+        cross_kws = CROSS_CONTAMINATION.get(al, [])
+        if cross_kws:
+            cross_mask = _matches_keywords_series(desc_lower, cross_kws) & ~mask & ~combined_mask
+            for _, r in df[cross_mask].iterrows():
+                all_excl.append((r["description"],
+                    f"⚠️ Cross-contamination risk for {al} — may be processed on shared equipment"))
+            mask = mask | cross_mask
         combined_mask = combined_mask | mask
     return df[~combined_mask].reset_index(drop=True), all_excl
 
