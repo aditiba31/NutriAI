@@ -8,6 +8,8 @@
 
 🔗 **Live App:** [https://nutriai-dietplan.streamlit.app](https://nutriai-dietplan.streamlit.app)
 
+📂 **GitHub:** [https://github.com/aditiba31/NutriAI](https://github.com/aditiba31/NutriAI)
+
 ---
 
 ## The Problem
@@ -38,7 +40,7 @@ Every excluded food comes with a source-cited explanation (e.g., *"Garlic exclud
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/aditibelur/NutriAI.git
+git clone https://github.com/aditiba31/NutriAI.git
 cd NutriAI
 
 # 2. Install dependencies
